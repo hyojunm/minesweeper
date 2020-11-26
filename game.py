@@ -73,6 +73,8 @@ class Cell:
 
 # Fill in the board list with empty cells based on selected difficulty
 def create_cells(difficulty):
+	board.clear()
+	
 	for row in range(difficulty["cells"]):
 		board.append([])
 
