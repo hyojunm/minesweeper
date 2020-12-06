@@ -23,7 +23,7 @@ class Cell:
 
 	# Uncover this cell (if no mines around it, uncover adjacent cells)
 	def uncover(self):
-		if self.uncovered:
+		if self.uncovered or self.flagged:
 			return
 
 		self.uncovered = True
@@ -73,6 +73,8 @@ class Cell:
 
 # Fill in the board list with empty cells based on selected difficulty
 def create_cells(difficulty):
+	board.clear()
+	
 	for row in range(difficulty["cells"]):
 		board.append([])
 
