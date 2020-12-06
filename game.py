@@ -23,7 +23,7 @@ class Cell:
 
 	# Uncover this cell (if no mines around it, uncover adjacent cells)
 	def uncover(self):
-		if self.uncovered:
+		if self.uncovered or self.flagged:
 			return
 
 		self.uncovered = True
