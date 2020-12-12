@@ -308,29 +308,26 @@ while running:
 				button = get_selected_button(x, y)
 
 				if button:
-					if buttons.index(button) != DIFFICULTIES.index(difficulty) and buttons.index(button) < len(DIFFICULTIES):
-						difficulty = DIFFICULTIES[buttons.index(button)]
+					if buttons.index(button) != DIFFICULTIES.index(difficulty):
+						if buttons.index(button) < len(DIFFICULTIES):
+							difficulty = DIFFICULTIES[buttons.index(button)]
 					
-					set_up(difficulty)
+						set_up(difficulty)
 
 		elif event.type == pygame.MOUSEBUTTONUP:
 			x, y = event.pos
 			mouse_button = event.button
 			cell = get_selected_cell(x, y)
 
-			if len(selected_cells) == 1:
-				if mouse_button == 1:
-					selected_cells[0].uncovered = False
+			for selected_cell in selected_cells:
+				selected_cell.uncovered = False
 
-					if cell in selected_cells:
-						if playing:
-							cell.uncover()
-						else:
-							start_game(cell.row, cell.column, difficulty)
-							playing = True
-			else:
-				for selected_cell in selected_cells:
-					selected_cell.uncovered = False
+			if cell in selected_cells and len(selected_cells) == 1 and mouse_button == 1:
+				if playing:
+					cell.uncover()
+				else:
+					start_game(cell.row, cell.column, difficulty)
+					playing = True
 
 			selected_cells.clear()
 
