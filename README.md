@@ -25,7 +25,7 @@ Your goal is to uncover all of the cells that aren't mines.
 | --------------     | -------------                                                       |
 | Left click         | Uncovers a cell                                                     |
 | Right click        | Flags the cell                                                      |
-| Left + right click | Indicates the uncovered adjacent cells or uncovers them accordingly |
+| Left + right click | Indicates the adjacent cells or uncovers them accordingly           |
 
 
 ### Credits
