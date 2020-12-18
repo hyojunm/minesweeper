@@ -21,7 +21,7 @@ Your goal is to uncover all of the cells that aren't mines.
 
 ### Mouse Controls
 
-| Mouse action.      | Action.                                                             |
+| Mouse action       | Action performed                                                    |
 | --------------     | -------------                                                       |
 | Left click         | Uncovers a cell                                                     |
 | Right click        | Flags the cell                                                      |
