@@ -1,4 +1,5 @@
-import random, copy
+import random
+
 from cell import Cell
 
 class Board:
@@ -8,7 +9,7 @@ class Board:
         self.mines = mines
         self.uncovered = 0
         self.grid = []
-        set_grid()
+        self.set_grid()
 
     def __repr__(self):
         pass
@@ -18,6 +19,9 @@ class Board:
 
     def get_uncovered(self):
         return self.uncovered
+
+    def get_grid(self):
+        return self.grid
         
     def set_grid(self):
         for row in range(self.rows):
@@ -27,19 +31,32 @@ class Board:
                 self.grid[row].append(Cell(row, column))
 
     def set_mines(self, start_row, start_column):
-        available = copy.deepcopy(self.grid)
+        available = []
 
+        for row in range(self.rows):
+            available.append([])
+
+            for column in range(self.columns):
+                available[row].append(True)
+               
         # first uncovered cell cannot be a mine
-        del available[start_row][start_column]
+        available[start_row][start_column] = False
 
-	    for i in range(self.mines):
-		    mine = random.choice(random.choice(available))
-            row, column = mine.get_location()
+        # don't put mine adjacent to first uncovered cell
+        for n in self.get_adj_cells(start_row, start_column):
+            row, column = n.get_location()
+            available[row][column] = False
 
-		    self.grid[row][column].set_mine()
-    		del available[row][column]
-	
-	    del available
+        row = start_row
+        column = start_column
+
+        for i in range(self.mines):
+            while not available[row][column]:
+                row = random.randint(0, self.rows - 1)
+                column = random.randint(0, self.columns - 1)
+
+            self.grid[row][column].set_mine()
+            available[row][column] = False
 
     def get_adj_cells(self, row, column):
         adj_cells = []
@@ -68,9 +85,15 @@ class Board:
 
         return list(filter(lambda item : item.is_mine(), adj_cells))
 
+    def get_adj_flags(self, row=0, column=0, adj_cells=None):
+        if not adj_cells:
+            adj_cells = self.get_adj_cells(row, column)
+
+        return list(filter(lambda item : item.status == FLAGGED, adj_cells))
+
     def uncover(self, row, column):
         if self.uncovered == 0:
-            set_mines(row, column)
+            self.set_mines(row, column)
 
         c = self.grid[row][column]
 
@@ -78,17 +101,27 @@ class Board:
             return
 
         self.uncovered += 1
-
-        if c.get_status() == Cell.UNCOVERED_MINE:
+        
+        if c.is_mine():
             pass
 
-        if c.get_status() == Cell.UNCOVERED_LAND:
-            adj_cells = self.get_adj_cells(row, column)
-            adj_mines = self.get_adj_mines(adj_cells=adj_cells)
+        adj_cells = self.get_adj_cells(row, column)
+        adj_mines = self.get_adj_mines(adj_cells=adj_cells)
 
-            c.set_hint(len(adj_mines))
+        c.set_hint(len(adj_mines))
 
-            if not len(adj_mines):
-                for n in adj_cells:
-                    if n.uncover():
-                        self.uncovered += 1
+        if not len(adj_mines):
+            for n in adj_cells:
+                next_row, next_col = n.get_location()
+                self.uncover(next_row, next_col)
+
+    def flag(self, row, column):
+        c = self.grid[row][column]
+
+        if c.get_status() == Cell.UNCOVERED:
+            return
+
+        if c.flag():
+            self.mines -= 1
+        else:
+            self.mines += 1

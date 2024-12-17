@@ -1,22 +1,28 @@
 import pygame
-from game import Cell, create_cells, start_game, board
 
+from setting import Setting
+from board import Board
+from cell import Cell
+from button import Button
+from font import derive_font
 
 pygame.init()
 pygame.font.init()
 
-DISPLAY_WIDTH = 900
-DISPLAY_HEIGHT = 1000
+FPS = 60
 
-pygame.display.set_caption('Minesweeper')
-window = pygame.display.set_mode((DISPLAY_WIDTH, DISPLAY_HEIGHT))
+SCALE = 1
 
-GAME_FONT = './fonts/PressStart2P-Regular.ttf'
+DISPLAY_WIDTH = SCALE * 800
+DISPLAY_HEIGHT = SCALE * 900
 
-GAME_FONT_32_PT = pygame.font.Font(GAME_FONT, 32)
-GAME_FONT_24_PT = pygame.font.Font(GAME_FONT, 24)
-GAME_FONT_16_PT = pygame.font.Font(GAME_FONT, 16)
-GAME_FONT_12_PT = pygame.font.Font(GAME_FONT, 12)
+PADDING_SIDE = SCALE * 50
+PADDING_TOP = SCALE * 100
+PADDING_BETWEEN = SCALE * 30
+
+BUTTON_WIDTH = SCALE * 200
+BUTTON_HEIGHT = SCALE * 40
+BUTTON_BORDER_SIZE = 3
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -25,162 +31,154 @@ LIGHT_GRAY = (180, 180, 180)
 RED = (240, 16, 0)
 BROWN = (82, 60, 0)
 
-FPS = 60
+DIFFICULTY_SETTINGS = []
+DIFFICULTY_SETTINGS.append(Setting('Easy', 10, 12, 5, derive_font(24)))
+DIFFICULTY_SETTINGS.append(Setting('Medium', 20, 50, 3, derive_font(16)))
+DIFFICULTY_SETTINGS.append(Setting('Hard', 28, 99, 2, derive_font(12)))
 
-PADDING_SIDE = 100
-PADDING_TOP = 150
-
-BUTTON_WIDTH = 200
-BUTTON_HEIGHT = 50
-BUTTON_BORDER_SIZE = 3
-
-WIN = 1
-LOSE = 2
-
-DIFFICULTIES = [{ "cells": 10, "mines": 12, "shadow": 5, "font": GAME_FONT_24_PT, "name": "Easy" },
-				{ "cells": 20, "mines": 50, "shadow": 3, "font": GAME_FONT_16_PT, "name": "Medium" },
-				{ "cells": 28, "mines": 99, "shadow": 2, "font": GAME_FONT_12_PT, "name": "Hard" }]
+for setting in DIFFICULTY_SETTINGS:
+	setting.set_cell_size(DISPLAY_WIDTH, PADDING_SIDE)
 
 running = True
 playing = False
 clock = pygame.time.Clock()
 
-difficulty = DIFFICULTIES[1]
-cell_size = 0
+game_settings_index = 1
+game_settings = DIFFICULTY_SETTINGS[game_settings_index]
 
 selected_cells = []
-selected_button = None
-click = None
+prev_click = None
 
-mines_left = 0
+buttons = []
+selected_button = None
+
 time = 0
 result = 0
 
-buttons = []
+board = None
 
 
-# Create empty cells and set cell size
-def set_up(difficulty):
-	global cell_size, mines_left, time, result, playing
+def draw_mine(x, y):
+	mine_x = x + (game_settings.get_cell_size() / 2)
+	mine_y = y + (game_settings.get_cell_size() / 2)
+	mine_radius = (game_settings.get_cell_size() / 2) / 2
 
-	create_cells(difficulty)
-	cell_size = (DISPLAY_WIDTH - (2 * PADDING_SIDE)) / difficulty["cells"]
+	pygame.draw.circle(window, BLACK, (mine_x, mine_y), mine_radius)
 
-	create_buttons()
+def draw_flag(x, y):
+	flag_width = game_settings.get_cell_size() / 2
+	flag_height = flag_width
 
-	mines_left = difficulty["mines"]
-	time = 0
-	result = 0
-	playing = False
+	flag_x = x + game_settings.get_cell_size() / 2 - flag_width / 2
+	flag_y = y + flag_x - x
 
+	flag_rect = pygame.Rect(flag_x, flag_y, flag_width, flag_height / 2)
+	pygame.draw.rect(window, RED, flag_rect)
 
-# Draw the board and the cells
-def draw_cells():
-	global mines_left, result, playing
+	start_pos = (flag_x, flag_y)
+	end_pos = (flag_x, flag_y + flag_height)
 
-	uncovered_cells = 0
+	pygame.draw.line(window, BLACK, start_pos, end_pos, game_settings.get_shadow_size())
 
-	for row in board:
-		for cell in row:
-			shadow_rect = pygame.Rect(cell.column * cell_size + PADDING_SIDE, cell.row * cell_size + PADDING_TOP,
-								 cell_size, cell_size)
-			pygame.draw.rect(window, BLACK, shadow_rect)
+	# show 'X' if game over and flag is not a mine
 
-			cell_x = (cell.column * cell_size) + PADDING_SIDE
-			cell_y = (cell.row * cell_size) + PADDING_TOP
+def draw_hint(x, y, hint):
+	if hint == 0:
+		return
+
+	rendered_text = game_settings.get_font().render(str(hint), 1, BLACK)
+
+	text_x = x + (game_settings.get_cell_size() / 2) - (rendered_text.get_width() / 2)
+	text_y = y + (game_settings.get_cell_size() / 2) - (rendered_text.get_height() / 2)
+
+	window.blit(rendered_text, (text_x, text_y))
+
+def draw_board(board):
+	for board_row in board.get_grid():
+		for cell in board_row:
+			row, column = cell.get_location()
+
+			cell_size = game_settings.get_cell_size()
+			shadow_size = game_settings.get_shadow_size()
+
+			cell_x = (column * cell_size) + PADDING_SIDE
+			cell_y = (row * cell_size) + PADDING_TOP
 			cell_color = LIGHT_GRAY
 
-			if cell.is_mine and result == LOSE and not cell.uncovered:
-				cell.uncover()
+			shadow_rect = pygame.Rect(cell_x, cell_y, cell_size, cell_size)
+			pygame.draw.rect(window, BLACK, shadow_rect)
 
-			if cell.uncovered:
-				if cell not in selected_cells:
-					uncovered_cells += 1
+			if cell in selected_cells:
+				cell_x += shadow_size
+				cell_y += shadow_size
 
-				cell_x += difficulty["shadow"]
-				cell_y += difficulty["shadow"]
-				
-				if cell.is_mine and cell not in selected_cells:
+			if cell.get_status() == Cell.UNCOVERED:
+				cell_x += shadow_size
+				cell_y += shadow_size
+
+				if cell.is_mine():
 					cell_color = RED
 				else:
 					cell_color = GRAY
 
-			cell_rect = pygame.Rect(cell_x, cell_y, cell_size - difficulty["shadow"], cell_size - difficulty["shadow"])
+			cell_rect = pygame.Rect(cell_x, cell_y, cell_size - shadow_size, cell_size - shadow_size)
 			pygame.draw.rect(window, cell_color, cell_rect)
 
-			if cell.is_mine and cell.uncovered and cell not in selected_cells:
-				mine_x = cell_x + (cell_size / 2)
-				mine_y = cell_y + (cell_size / 2)
-				mine_radius = (cell_size / 2) / 2
+			if cell.get_status() == Cell.UNCOVERED and cell.is_mine():
+				draw_mine(cell_x, cell_y)
 
-				pygame.draw.circle(window, BLACK, (mine_x, mine_y), mine_radius)
+			if cell.get_status() == Cell.UNCOVERED and not cell.is_mine():
+				draw_hint(cell_x, cell_y, cell.get_hint())
 
-				if playing:
-					game_over(LOSE)
-			elif cell.flagged:
-				flag_width = cell_size / 2
-				flag_height = flag_width
-				flag_x = cell_x + (cell_size / 2 - flag_width / 2)
-				flag_y = cell_y + (flag_x - cell_x)
+			if cell.get_status() == Cell.FLAGGED:
+				draw_flag(cell_x, cell_y)
 
-				flag = pygame.Rect(flag_x, flag_y, flag_width, flag_height / 2)
-				pygame.draw.rect(window, RED, flag)
-
-				pygame.draw.line(window, BLACK, (flag_x, flag_y), (flag_x, flag_y + flag_height), difficulty["shadow"])
-
-				if result == LOSE and not cell.is_mine:
-					pygame.draw.line(window, BLACK, (cell_x, cell_y), (cell_x + (cell_size - difficulty["shadow"]), cell_y + (cell_size - difficulty["shadow"])), difficulty["shadow"])
-					pygame.draw.line(window, BLACK, (cell_x + (cell_size - difficulty["shadow"]), cell_y), (cell_x, cell_y + (cell_size - difficulty["shadow"])), difficulty["shadow"])
-			else:
-				value = difficulty["font"].render(cell.value, 1, BLACK)
-				window.blit(value, (cell_x + (cell_size / 2) - (value.get_width() / 2),
-									cell_y + (cell_size / 2) - (value.get_height() / 2)))
-
-	if uncovered_cells == (difficulty["cells"] ** 2) - difficulty["mines"] and playing:
-		mines_left = 0
-		game_over(WIN)
-
-
-# Get the row and column values for the cell that the user clicked or hovered on
 def get_selected_cell(mouse_x, mouse_y):
+	if mouse_x < PADDING_SIDE or mouse_x > DISPLAY_WIDTH - PADDING_SIDE:
+		return None
+
+	if mouse_y < PADDING_TOP or mouse_y > DISPLAY_HEIGHT - PADDING_TOP:
+		return None
+
 	mouse_x -= PADDING_SIDE
 	mouse_y -= PADDING_TOP
 
-	if mouse_x < 0 or mouse_x > DISPLAY_WIDTH - (2 * PADDING_SIDE) or mouse_y < 0 or mouse_y > DISPLAY_HEIGHT - (2 * PADDING_TOP):
-		return False
-	else:
-		cell_x = int(mouse_x // cell_size)
-		cell_y = int(mouse_y // cell_size)
+	cell_x = int(mouse_x // game_settings.get_cell_size())
+	cell_y = int(mouse_y // game_settings.get_cell_size())
 
-		return board[cell_y][cell_x]
+	return board.get_grid()[cell_y][cell_x]
 
-
-# Create buttons and set up button location
 def create_buttons():
 	rect_x = PADDING_SIDE
-	rect_y = PADDING_TOP + (cell_size * difficulty["cells"]) + 30
+	rect_y = PADDING_TOP + game_settings.get_cell_size() * game_settings.get_grid_size() + PADDING_BETWEEN
 
-	buttons.append(pygame.Rect(rect_x, rect_y, BUTTON_WIDTH, BUTTON_HEIGHT))
+	easy_button = Button('Easy', rect_x, rect_y, BUTTON_WIDTH, BUTTON_HEIGHT)
+	buttons.append(easy_button)
 
-	rect_x = (DISPLAY_WIDTH / 2) - (BUTTON_WIDTH / 2)
-	buttons.append(pygame.Rect(rect_x, rect_y, BUTTON_WIDTH, BUTTON_HEIGHT))
+	rect_x = DISPLAY_WIDTH / 2 - BUTTON_WIDTH / 2
+	
+	medium_button = Button('Medium', rect_x, rect_y, BUTTON_WIDTH, BUTTON_HEIGHT)
+	buttons.append(medium_button)
 
-	rect_x = (DISPLAY_WIDTH - PADDING_SIDE) - BUTTON_WIDTH
-	buttons.append(pygame.Rect(rect_x, rect_y, BUTTON_WIDTH, BUTTON_HEIGHT))
+	rect_x = DISPLAY_WIDTH - PADDING_SIDE - BUTTON_WIDTH
 
-	rect_x = (DISPLAY_WIDTH / 2) - (BUTTON_WIDTH / 2)
-	rect_y = PADDING_TOP - (BUTTON_HEIGHT + 30)
-	buttons.append(pygame.Rect(rect_x, rect_y, BUTTON_WIDTH, BUTTON_HEIGHT))
+	hard_button = Button('Hard', rect_x, rect_y, BUTTON_WIDTH, BUTTON_HEIGHT)
+	buttons.append(hard_button)
 
+	rect_x = DISPLAY_WIDTH / 2 - BUTTON_WIDTH / 2
+	rect_y = PADDING_TOP - BUTTON_HEIGHT - PADDING_BETWEEN
 
-# Get the button that the user clicked or hovered on
+	restart_button = Button('Restart', rect_x, rect_y, BUTTON_WIDTH, BUTTON_HEIGHT)
+	buttons.append(restart_button)
+
+# get the button clicked or hovered on
 def get_selected_button(mouse_x, mouse_y):
 	for button in buttons:
-		if mouse_x >= button.x and mouse_x <= button.x + button.w and mouse_y >= button.y and mouse_y <= button.y + button.h:
-			return button
+		if mouse_x >= button.get_x() and mouse_x <= button.get_x() + button.get_width():
+			if mouse_y >= button.get_y() and mouse_y <= button.get_y() + button.get_height():
+				return button
 
-	return False
-
+	return None
 
 # End the current game and set the result accordingly
 def game_over(final_result):
@@ -193,131 +191,135 @@ def game_over(final_result):
 	pygame.display.update()
 	pygame.time.delay(2000)
 
+def set_up(settings):
+	global board, time, result, playing
 
-# Set up the game
-set_up(difficulty)
+	size = settings.get_grid_size()
+	mines = settings.get_mines()
+
+	board = Board(size, size, mines)
+
+	time = 0
+	result = 0
+	playing = False
+
+pygame.display.set_caption('Minesweeper')
+window = pygame.display.set_mode((DISPLAY_WIDTH, DISPLAY_HEIGHT))
+
+create_buttons()
+set_up(game_settings)
 
 
 while running:
 	clock.tick(FPS)
-
-	# clear window
 	window.fill(WHITE)
 
-	# update and draw stopwatch
 	if playing:
 		time += 1 / FPS
 
-	text = GAME_FONT_24_PT.render(str(int(time // 1)), 1, BLACK)
-	window.blit(text, (DISPLAY_WIDTH - PADDING_SIDE - text.get_width(), PADDING_TOP - text.get_height() - 30))
+	# show time
+	text = derive_font(24).render(str(int(time // 1)), 1, BLACK)
+	text_x = DISPLAY_WIDTH - PADDING_SIDE - text.get_width()
+	text_y = PADDING_TOP - text.get_height() - PADDING_BETWEEN
 
+	window.blit(text, (text_x, text_y))
 
-	# Show the number of mines left
-	text = GAME_FONT_24_PT.render(str(mines_left), 1, BLACK)
-	window.blit(text, (PADDING_SIDE, PADDING_TOP - text.get_height() - 30))
+	# show mines left
+	text = derive_font(24).render(str(board.get_mines()), 1, BLACK)
+	text_x = PADDING_SIDE
+	text_y = PADDING_TOP - text.get_height() - PADDING_BETWEEN
 
+	window.blit(text, (text_x, text_y))
 
-	# Draw restart button on top
-	text = GAME_FONT_16_PT.render("Restart", 1, BLACK)
-	window.blit(text, (buttons[3].x + (BUTTON_WIDTH / 2) - (text.get_width() / 2),
-					   buttons[3].y + (BUTTON_HEIGHT / 2) - (text.get_height() / 2)))
+	# show buttons
+	for button in buttons:
+		text = derive_font(16).render(button.get_label(), 1, BLACK)
+		text_x = button.get_x() + button.get_width() / 2 - text.get_width() / 2
+		text_y = button.get_y() + button.get_height() / 2 - text.get_height() / 2
 
+		window.blit(text, (text_x, text_y))
 
-	# Draw difficulty buttons on the bottom
-	text = GAME_FONT_16_PT.render("Easy", 1, BLACK)
-	window.blit(text, (buttons[0].x + (BUTTON_WIDTH / 2) - (text.get_width() / 2),
-					   buttons[0].y + (BUTTON_HEIGHT / 2) - (text.get_height() / 2)))
-
-	text = GAME_FONT_16_PT.render("Medium", 1, BLACK)
-	window.blit(text, (buttons[1].x + (BUTTON_WIDTH / 2) - (text.get_width() / 2),
-					   buttons[1].y + (BUTTON_HEIGHT / 2) - (text.get_height() / 2)))
-
-	text = GAME_FONT_16_PT.render("Hard", 1, BLACK)
-	window.blit(text, (buttons[2].x + (BUTTON_WIDTH / 2) - (text.get_width() / 2),
-					   buttons[2].y + (BUTTON_HEIGHT / 2) - (text.get_height() / 2)))
-
-
-	# Add rectangle border around selected button
 	if selected_button:
-		pygame.draw.rect(window, BLACK, selected_button, 3)
+		button_rect = pygame.Rect(selected_button.get_x(), selected_button.get_y(), selected_button.get_width(), selected_button.get_height())
+		pygame.draw.rect(window, BLACK, button_rect, BUTTON_BORDER_SIZE)
 
-	pygame.draw.rect(window, BLACK, buttons[DIFFICULTIES.index(difficulty)], 3)
+	# add border around selected difficulty
+	button = buttons[game_settings_index]
+	button_rect = pygame.Rect(button.get_x(), button.get_y(), button.get_width(), button.get_height())
 
+	pygame.draw.rect(window, BLACK, button_rect, BUTTON_BORDER_SIZE)
 
-	# Handle pygame events
+	# handle pygame events
 	for event in pygame.event.get():
 		if event.type == pygame.QUIT:
 			running = False
-		elif event.type == pygame.MOUSEMOTION:
+		
+		if event.type == pygame.MOUSEMOTION:
 			x, y = event.pos
-			button = get_selected_button(x, y)
+			selected_button = get_selected_button(x, y)
 
-			if button:
-				selected_button = button
-			else:
-				selected_button = None
-		elif event.type == pygame.MOUSEBUTTONDOWN:
+		if event.type == pygame.MOUSEBUTTONDOWN:
 			x, y = event.pos
 			mouse_button = event.button
-			cell = get_selected_cell(x, y)
 
-			if cell:
-				if cell.uncovered and (mouse_button == 1 or mouse_button == 3):
-					if click and mouse_button != click[1] and time - click[0] < 5 / 60 and playing:
-						adj_cells = cell.get_adj_cells()
-						adj_flags = len(list(filter(lambda item : item.flagged, adj_cells)))
+			selected_cell = get_selected_cell(x, y)
+			row, column = selected_cell.get_location()
 
-						for adj_cell in adj_cells:
-							if not adj_cell.uncovered and not adj_cell.flagged:
-								if adj_flags == int(cell.value):
-									adj_cell.uncover()
-								else:
-									adj_cell.uncovered = True
-									selected_cells.append(adj_cell)
+			selected_button = get_selected_button(x, y)
 
-						click = None
-					else:
-						click = [time, mouse_button]
-				elif mouse_button == 1 and not cell.flagged:
-					cell.uncovered = True
-					selected_cells.append(cell)
-				elif mouse_button == 3 and playing:
-					if cell.flagged:
-						cell.flagged = False
-						mines_left += 1
-					else:
-						cell.flagged = True
-						mines_left -= 1
+			if selected_cell:
+				if mouse_button != 1 and mouse_button != 3:
+					continue
 
-			else:
-				button = get_selected_button(x, y)
+				# left mouse click feature
+				# uncover cell
+				if mouse_button == 1:
+					selected_cells.append(selected_cell)
 
-				if button:
-					if buttons.index(button) != DIFFICULTIES.index(difficulty):
-						if buttons.index(button) < len(DIFFICULTIES):
-							difficulty = DIFFICULTIES[buttons.index(button)]
+				# right mouse click feature
+				# flag cell
+				if mouse_button == 3 and playing:
+					board.flag(row, column)
+
+				# right + left mouse click feature
+				# indicate or reveal adjacent cells
+				if selected_cell.get_status() == Cell.UNCOVERED and playing:
+					if not prev_click:
+						prev_click = (time, mouse_button)
+						continue
 					
-						set_up(difficulty)
+					prev_time, prev_button = prev_click
 
-		elif event.type == pygame.MOUSEBUTTONUP:
+					if mouse_button != prev_button and time - prev_time < 5 / 60:
+						adj_cells = board.get_adj_cells(row, column)
+						adj_flags = board.get_adj_flags(adj_cells)
+
+						for n in adj_cells:
+							if n.get_status() != COVERED:
+								continue
+
+							if len(adj_flags) == selected_cell.get_hint():
+								n.uncover()
+							else:
+								selected_cells.append(n)
+
+					prev_click = None
+
+		if event.type == pygame.MOUSEBUTTONUP:
 			x, y = event.pos
 			mouse_button = event.button
-			cell = get_selected_cell(x, y)
 
-			for selected_cell in selected_cells:
-				selected_cell.uncovered = False
-
-			if cell in selected_cells and len(selected_cells) == 1 and mouse_button == 1:
-				if playing:
-					cell.uncover()
-				else:
-					start_game(cell.row, cell.column, difficulty)
-					playing = True
+			selected_cell = get_selected_cell(x, y)
+			row, column = selected_cell.get_location()
+			
+			if selected_cell in selected_cells and len(selected_cells) == 1 and mouse_button == 1:
+				board.uncover(row, column)
+				playing = True
 
 			selected_cells.clear()
 
 
-	# Draw cells and update the window
+	# draw cells and update the window
 	if result:
 		board_rect = pygame.Rect(PADDING_SIDE, PADDING_TOP, cell_size * difficulty["cells"], cell_size * difficulty["cells"])
 		pygame.draw.rect(window, LIGHT_GRAY, board_rect)
@@ -341,7 +343,7 @@ while running:
 			text = GAME_FONT_16_PT.render("You uncovered a mine.", 1, WHITE)
 			window.blit(text, (PADDING_SIDE + (cell_size * difficulty["cells"] / 2) - (text.get_width() / 2), PADDING_TOP + 100))
 	else:
-		draw_cells()
+		draw_board(board)
 
 	pygame.display.update()
 

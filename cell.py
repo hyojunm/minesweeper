@@ -1,18 +1,17 @@
 class Cell:
     COVERED = 0
-    UNCOVERED_LAND = 1
-    UNCOVERED_MINE = 2
-    FLAGGED = 3
+    UNCOVERED = 1
+    FLAGGED = 2
 
     def __init__(self, row, column):
         self.row = row
         self.column = column
         self.mine = False
-        self.status = Cell.COVERED
+        self.status = self.COVERED
         self.hint = 0
 
     def __repr__(self):
-        return f'({self.row}, {self.column})'
+        return f'({self.row}, {self.column})[{'M' if self.mine else ' '}]'
 
     def is_mine(self):
         return self.mine
@@ -21,10 +20,10 @@ class Cell:
         self.mine = mine
 
     def get_status(self):
-        return self.value
+        return self.status
 
-    def set_status(self, value):
-        self.value = value
+    def set_status(self, status):
+        self.status = status
 
     def get_hint(self):
         return self.hint
@@ -36,21 +35,18 @@ class Cell:
         return (self.row, self.column)
 
     def uncover(self):
-        if self.status != Cell.COVERED:
+        if self.status != self.COVERED:
             return False
 
-        if self.mine:
-            self.status = Cell.UNCOVERED_MINE
-
-        if not self.mine:
-            self.status = Cell.UNCOVERED_LAND
-
+        self.status = self.UNCOVERED
         return True
 
     # toggle flag
     def flag(self):
-        if self.status == Cell.FLAGGED:
-            self.status = Cell.COVERED
-        
-        if self.status == Cell.COVERED:
-            self.status = Cell.FLAGGED
+        if self.status == self.COVERED:
+            self.status = self.FLAGGED
+            return True
+
+        if self.status == self.FLAGGED:
+            self.status = self.COVERED
+            return False

@@ -1,4 +1,4 @@
-# :bomb: Minesweeper :triangular_flag_on_post:
+# minesweeper :triangular_flag_on_post:
 
 ### Project Description
 
