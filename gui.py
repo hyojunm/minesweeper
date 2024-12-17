@@ -1,31 +1,23 @@
-# Import required modules
 import pygame
 from game import Cell, create_cells, start_game, board
 
 
-# Initialize pygame
 pygame.init()
 pygame.font.init()
 
-
-# Set window properties
 DISPLAY_WIDTH = 900
 DISPLAY_HEIGHT = 1000
 
-pygame.display.set_caption("Minesweeper Game")
+pygame.display.set_caption('Minesweeper')
 window = pygame.display.set_mode((DISPLAY_WIDTH, DISPLAY_HEIGHT))
 
-
-# Set fonts
-GAME_FONT = "PressStart2P-Regular.ttf"
+GAME_FONT = './fonts/PressStart2P-Regular.ttf'
 
 GAME_FONT_32_PT = pygame.font.Font(GAME_FONT, 32)
 GAME_FONT_24_PT = pygame.font.Font(GAME_FONT, 24)
 GAME_FONT_16_PT = pygame.font.Font(GAME_FONT, 16)
 GAME_FONT_12_PT = pygame.font.Font(GAME_FONT, 12)
 
-
-# Set colors
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 GRAY = (128, 128, 128)
@@ -33,8 +25,6 @@ LIGHT_GRAY = (180, 180, 180)
 RED = (240, 16, 0)
 BROWN = (82, 60, 0)
 
-
-# Set game properties
 FPS = 60
 
 PADDING_SIDE = 100
@@ -51,8 +41,6 @@ DIFFICULTIES = [{ "cells": 10, "mines": 12, "shadow": 5, "font": GAME_FONT_24_PT
 				{ "cells": 20, "mines": 50, "shadow": 3, "font": GAME_FONT_16_PT, "name": "Medium" },
 				{ "cells": 28, "mines": 99, "shadow": 2, "font": GAME_FONT_12_PT, "name": "Hard" }]
 
-
-# Set game variables
 running = True
 playing = False
 clock = pygame.time.Clock()
@@ -68,7 +56,6 @@ mines_left = 0
 time = 0
 result = 0
 
-# Other UI elements
 buttons = []
 
 
@@ -211,15 +198,13 @@ def game_over(final_result):
 set_up(difficulty)
 
 
-# Keep the program running
 while running:
-
-	# Set clock and fill window
 	clock.tick(FPS)
+
+	# clear window
 	window.fill(WHITE)
 
-	
-	# Update and draw stopwatch
+	# update and draw stopwatch
 	if playing:
 		time += 1 / FPS
 
