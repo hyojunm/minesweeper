@@ -1,6 +1,9 @@
 import random
+import pygame
+import multiprocessing
 
 from cell import Cell
+from constants import Constants
 
 class Board:
     def __init__(self, rows, columns, mines):
@@ -13,6 +16,12 @@ class Board:
 
     def __repr__(self):
         pass
+
+    def get_rows(self):
+        return self.rows
+
+    def get_columns(self):
+        return self.columns
 
     def get_mines(self):
         return self.mines
@@ -47,9 +56,6 @@ class Board:
             row, column = n.get_location()
             available[row][column] = False
 
-        row = start_row
-        column = start_column
-
         for i in range(self.mines):
             while not available[row][column]:
                 row = random.randint(0, self.rows - 1)
@@ -76,7 +82,6 @@ class Board:
 
             adj_cells.append(self.grid[adj_row][adj_col])
 
-        # adj_cells.sort(reverse=True, key=(lambda item : item.column)) # ???
         return adj_cells
 
     def get_adj_mines(self, row=0, column=0, adj_cells=None):
@@ -89,19 +94,20 @@ class Board:
         if not adj_cells:
             adj_cells = self.get_adj_cells(row, column)
 
-        return list(filter(lambda item : item.status == FLAGGED, adj_cells))
+        return list(filter(lambda item : item.status == Cell.FLAGGED, adj_cells))
 
     def uncover(self, row, column):
         if self.uncovered == 0:
             self.set_mines(row, column)
 
         c = self.grid[row][column]
-
+        
         if not c.uncover():
             return
 
         self.uncovered += 1
         
+        # game over - user has uncovered a mine
         if c.is_mine():
             pass
 
@@ -117,11 +123,33 @@ class Board:
 
     def flag(self, row, column):
         c = self.grid[row][column]
+        status = c.flag()
 
-        if c.get_status() == Cell.UNCOVERED:
-            return
-
-        if c.flag():
-            self.mines -= 1
-        else:
+        if status == 1:
             self.mines += 1
+
+        if status == 2:
+            self.mines -= 1
+
+    def draw(self, window):
+        board_x = Constants.PADDING_SIDE - 5
+        board_y = Constants.PADDING_TOP - 5
+        board_size = Constants.GRID_SIZE * Constants.CELL_SIZE + 10
+
+        # repaint board rectangle
+        fill_rect = pygame.Rect(board_x, board_y, board_size, board_size)
+        pygame.draw.rect(window, Constants.WHITE, fill_rect)
+
+        # processes = []
+
+        for row in self.grid:
+            for cell in row:
+                cell.draw(window)
+                # process = multiprocessing.Process(target=cell.draw, args=[window])
+                # process.start()
+
+                # processes.append(process)
+                # maybe add threading here
+
+        # for process in processes:
+        #     process.join()
