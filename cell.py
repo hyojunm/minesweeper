@@ -9,6 +9,7 @@ class Cell:
     UNCOVERED = 1
     SELECTED = 2
     FLAGGED = 3
+    FLAGGED_INCORRECT = 4
 
     def __init__(self, row, column):
         self.row = row
@@ -114,6 +115,9 @@ class Cell:
         if self.status == self.FLAGGED:
             self.draw_flag(window, cell_x, cell_y)
 
+        if self.status == self.FLAGGED_INCORRECT:
+            self.draw_x(window, cell_x, cell_y)
+
     def draw_mine(self, window, x, y):
         mine_x = x + (Constants.CELL_SIZE / 2)
         mine_y = y + (Constants.CELL_SIZE / 2)
@@ -148,4 +152,12 @@ class Cell:
 
         pygame.draw.line(window, Constants.BLACK, start_pos, end_pos, Constants.SHADOW_SIZE)
 
-        # show 'X' if game over and flag is not a mine
+    def draw_x(self, window, x, y):
+        start_x = x
+        end_x = start_x + Constants.CELL_SIZE - Constants.SHADOW_SIZE
+
+        start_y = y
+        end_y = start_y + Constants.CELL_SIZE - Constants.SHADOW_SIZE
+
+        pygame.draw.line(window, Constants.RED, (start_x, start_y), (end_x, end_y), 4)
+        pygame.draw.line(window, Constants.RED, (end_x, start_y), (start_x, end_y), 4)

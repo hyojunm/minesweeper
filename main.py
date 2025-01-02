@@ -84,6 +84,35 @@ while running:
 
 	window.blit(text, (text_x, text_y))
 
+	if board.is_win():
+		playing = False
+
+		text = derive_font(20).render('You win!', 1, Constants.WHITE)
+		text_x = Constants.DISPLAY_WIDTH / 2 - text.get_width() / 2
+		text_y = Constants.PADDING_TOP - text.get_height() - Constants.PADDING_BETWEEN
+
+		window.blit(text, (text_x, text_y))
+
+	if board.is_lose():
+		if playing:
+			for row in board.get_grid():
+				for cell in row:
+					if cell.is_mine():
+						row, column = cell.get_location()
+						board.uncover(row, column)
+
+					if cell.get_status() == Cell.FLAGGED and not cell.is_mine():
+						cell.set_status(Cell.FLAGGED_INCORRECT)
+		
+		playing = False
+
+		text = derive_font(20).render('You lose...', 1, Constants.WHITE)
+		text_x = Constants.DISPLAY_WIDTH / 2 - text.get_width() / 2
+		text_y = Constants.PADDING_TOP - text.get_height() - Constants.PADDING_BETWEEN
+
+		window.blit(text, (text_x, text_y))
+
+
 	# handle pygame events
 	for event in pygame.event.get():
 		if event.type == pygame.QUIT:
@@ -160,7 +189,6 @@ while running:
 				cell.select()
 
 			selected_cells.clear()
-
 
 	board.draw(window)
 	pygame.display.update()

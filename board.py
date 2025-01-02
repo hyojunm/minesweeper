@@ -10,7 +10,9 @@ class Board:
         self.rows = rows
         self.columns = columns
         self.mines = mines
+        self.total_land = rows * columns - mines
         self.uncovered = 0
+        self.uncovered_mines = 0
         self.grid = []
         self.set_grid()
 
@@ -31,6 +33,12 @@ class Board:
 
     def get_grid(self):
         return self.grid
+
+    def is_win(self):
+        return self.uncovered == self.total_land
+
+    def is_lose(self):
+        return self.uncovered_mines > 0
         
     def set_grid(self):
         for row in range(self.rows):
@@ -106,10 +114,10 @@ class Board:
             return
 
         self.uncovered += 1
-        
-        # game over - user has uncovered a mine
+
         if c.is_mine():
-            pass
+            self.uncovered_mines += 1
+            return
 
         adj_cells = self.get_adj_cells(row, column)
         adj_mines = self.get_adj_mines(adj_cells=adj_cells)
@@ -139,6 +147,9 @@ class Board:
         # repaint board rectangle
         fill_rect = pygame.Rect(board_x, board_y, board_size, board_size)
         pygame.draw.rect(window, Constants.WHITE, fill_rect)
+
+        fill_rect = pygame.Rect(board_x + 5, board_y + 5, board_size - 10, board_size - 10)
+        pygame.draw.rect(window, Constants.BLACK, fill_rect)
 
         # processes = []
 
