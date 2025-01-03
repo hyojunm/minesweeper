@@ -1,6 +1,5 @@
 import random
 import pygame
-import multiprocessing
 
 from cell import Cell
 from constants import Constants
@@ -15,9 +14,6 @@ class Board:
         self.uncovered_mines = 0
         self.grid = []
         self.set_grid()
-
-    def __repr__(self):
-        pass
 
     def get_rows(self):
         return self.rows
@@ -60,6 +56,7 @@ class Board:
         available[start_row][start_column] = False
 
         # don't put mine adjacent to first uncovered cell
+        # optional - delete for loop below for added difficulty
         for n in self.get_adj_cells(start_row, start_column):
             row, column = n.get_location()
             available[row][column] = False
@@ -72,6 +69,7 @@ class Board:
             self.grid[row][column].set_mine()
             available[row][column] = False
 
+    # returns list of 8 cells "adjacent" to given location
     def get_adj_cells(self, row, column):
         adj_cells = []
 
@@ -92,12 +90,16 @@ class Board:
 
         return adj_cells
 
+    # from the list of adjacent cells, returns number of mines
+    # regardless of whether they have been uncovered
     def get_adj_mines(self, row=0, column=0, adj_cells=None):
         if not adj_cells:
             adj_cells = self.get_adj_cells(row, column)
 
         return list(filter(lambda item : item.is_mine(), adj_cells))
 
+    # from the list of adjacent cells, returns the number of flags
+    # that the user has placed so far
     def get_adj_flags(self, row=0, column=0, adj_cells=None):
         if not adj_cells:
             adj_cells = self.get_adj_cells(row, column)
@@ -105,25 +107,27 @@ class Board:
         return list(filter(lambda item : item.status == Cell.FLAGGED, adj_cells))
 
     def uncover(self, row, column):
+        # first move of the game - set mine locations
         if self.uncovered == 0:
             self.set_mines(row, column)
 
         c = self.grid[row][column]
         
         if not c.uncover():
-            return
+            return # cell has been uncovered already
 
         self.uncovered += 1
 
         if c.is_mine():
             self.uncovered_mines += 1
-            return
+            return # mine has been uncovered - game over
 
         adj_cells = self.get_adj_cells(row, column)
         adj_mines = self.get_adj_mines(adj_cells=adj_cells)
 
         c.set_hint(len(adj_mines))
 
+        # no adjacent mines - recursively uncover adjacent cells
         if not len(adj_mines):
             for n in adj_cells:
                 next_row, next_col = n.get_location()
@@ -133,10 +137,10 @@ class Board:
         c = self.grid[row][column]
         status = c.flag()
 
-        if status == 1:
+        if status == 1: # undo flag
             self.mines += 1
 
-        if status == 2:
+        if status == 2: # place flag
             self.mines -= 1
 
     def draw(self, window):
@@ -144,23 +148,14 @@ class Board:
         board_y = Constants.PADDING_TOP - 5
         board_size = Constants.GRID_SIZE * Constants.CELL_SIZE + 10
 
-        # repaint board rectangle
+        # repaint border rectangle
         fill_rect = pygame.Rect(board_x, board_y, board_size, board_size)
         pygame.draw.rect(window, Constants.WHITE, fill_rect)
 
+        # repaint main board rectangle
         fill_rect = pygame.Rect(board_x + 5, board_y + 5, board_size - 10, board_size - 10)
         pygame.draw.rect(window, Constants.BLACK, fill_rect)
-
-        # processes = []
 
         for row in self.grid:
             for cell in row:
                 cell.draw(window)
-                # process = multiprocessing.Process(target=cell.draw, args=[window])
-                # process.start()
-
-                # processes.append(process)
-                # maybe add threading here
-
-        # for process in processes:
-        #     process.join()

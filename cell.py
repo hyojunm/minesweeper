@@ -3,8 +3,8 @@ import pygame
 from font import derive_font
 from constants import Constants
 
-
 class Cell:
+    # status codes
     COVERED = 0
     UNCOVERED = 1
     SELECTED = 2
@@ -18,6 +18,7 @@ class Cell:
         self.status = self.COVERED
         self.hint = 0
 
+    # used for command line output only
     def __repr__(self):
         status_code = ' '
 
@@ -47,52 +48,56 @@ class Cell:
     def set_hint(self, hint):
         self.hint = hint
 
+    # get row and column as tuple
     def get_location(self):
         return (self.row, self.column)
 
     def uncover(self):
         if self.status != self.COVERED and self.status != self.SELECTED:
-            return 0
+            return 0 # fail
 
         self.status = self.UNCOVERED
-        return 1
+        return 1 # success
 
+    # toggle flag
     def flag(self):
         if self.status == self.UNCOVERED:
-            return 0
+            return 0 # fail - already uncovered
 
         if self.status == self.FLAGGED:
             self.status = self.COVERED
-            return 1
+            return 1 # success - undo flag
 
         if self.status == self.COVERED:
             self.status = self.FLAGGED
-            return 2
+            return 2 # success - place flag
 
+    # toggle "select" as candidate to be uncovered
     def select(self):
         if self.status == self.COVERED:
             self.status = self.SELECTED
-            return 0
+            return 0 # success - selected
 
         if self.status == self.SELECTED:
             self.status = self.COVERED
-            return 1
+            return 1 # success - unselected
 
     def draw(self, window):
+        # assign constant values to variables for easier access
         cell_size = Constants.CELL_SIZE
         shadow_size = Constants.SHADOW_SIZE
 
-        cell_x = (self.column * Constants.CELL_SIZE) + Constants.PADDING_SIDE
-        cell_y = (self.row * Constants.CELL_SIZE) + Constants.PADDING_TOP
+        cell_x = (self.column * cell_size) + Constants.PADDING_SIDE
+        cell_y = (self.row * cell_size) + Constants.PADDING_TOP
         cell_color = Constants.LIGHT_GRAY
 
-        shadow_rect = pygame.Rect(cell_x, cell_y, Constants.CELL_SIZE, Constants.CELL_SIZE)
+        shadow_rect = pygame.Rect(cell_x, cell_y, cell_size, cell_size)
         pygame.draw.rect(window, Constants.BLACK, shadow_rect)
 
         # offset cell if uncovered or selected
         if self.status == self.UNCOVERED or self.status == self.SELECTED:
-            cell_x += Constants.SHADOW_SIZE
-            cell_y += Constants.SHADOW_SIZE
+            cell_x += shadow_size
+            cell_y += shadow_size
 
         if self.status == self.UNCOVERED and self.mine:
             cell_color = Constants.RED
@@ -100,8 +105,8 @@ class Cell:
         if self.status == self.UNCOVERED and not self.mine:
             cell_color = Constants.GRAY
 
-        cell_width = Constants.CELL_SIZE - Constants.SHADOW_SIZE
-        cell_height = Constants.CELL_SIZE - Constants.SHADOW_SIZE
+        cell_width = cell_size - shadow_size
+        cell_height = cell_size - shadow_size
 
         cell_rect = pygame.Rect(cell_x, cell_y, cell_width, cell_height)
         pygame.draw.rect(window, cell_color, cell_rect)
@@ -126,6 +131,7 @@ class Cell:
         pygame.draw.circle(window, Constants.BLACK, (mine_x, mine_y), mine_radius)
 
     def draw_hint(self, window, x, y):
+        # don't display anything if there are no adjacent mines
         if self.hint == 0:
             return
 
