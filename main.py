@@ -105,11 +105,8 @@ while running:
 			if not selected_cell:
 				continue
 
-			mouse_button = event.button # 1 = left click; 3 = right click
+			mouse_button = event.button # 1 = left click; 2 = wheel click; 3 = right click
 			row, column = selected_cell.get_location()
-
-			if mouse_button != 1 and mouse_button != 3:
-				continue
 
 			# left mouse click feature
 			# uncover cell
@@ -124,30 +121,24 @@ while running:
 
 			# right + left mouse click feature
 			# indicate or reveal adjacent cells
-			if selected_cell.get_status() == Cell.UNCOVERED and playing:
-				if not prev_click_info:
-					prev_click_info = (time, mouse_button)
-					continue
-				
-				prev_time, prev_button = prev_click_info
+			mouse_button_pressed = pygame.mouse.get_pressed()
 
-				if mouse_button != prev_button and time - prev_time < 5 / 60:
-					adj_cells = board.get_adj_cells(row, column)
-					adj_flags = board.get_adj_flags(adj_cells=adj_cells)
+			# https://stackoverflow.com/questions/42825429/how-to-detect-both-left-and-right-mouse-click-at-the-same-time-in-pygame
+			if (mouse_button_pressed[0] and mouse_button_pressed[2]) or mouse_button_pressed[1]:
+				adj_cells = board.get_adj_cells(row, column)
+				adj_flags = board.get_adj_flags(adj_cells=adj_cells)
 
-					for n in adj_cells:
-						n_row, n_column = n.get_location()
+				for n in adj_cells:
+					n_row, n_column = n.get_location()
 
-						if n.get_status() != Cell.COVERED:
-							continue
+					if n.get_status() != Cell.COVERED:
+						continue
 
-						if len(adj_flags) == selected_cell.get_hint():
-							board.uncover(n_row, n_column)
-						else:
-							n.select()
-							selected_cells.append(n)
-
-				prev_click_info = None
+					if len(adj_flags) == selected_cell.get_hint():
+						board.uncover(n_row, n_column)
+					else:
+						n.select()
+						selected_cells.append(n)
 
 		if event.type == pygame.MOUSEBUTTONUP:
 			x, y = event.pos
@@ -156,7 +147,7 @@ while running:
 			if not selected_cell:
 				continue
 
-			mouse_button = event.button # 1 = left click; 3 = right click
+			mouse_button = event.button # 1 = left click; 2 = wheel click; 3 = right click
 			row, column = selected_cell.get_location()
 
 			if selected_cell in selected_cells and len(selected_cells) == 1 and mouse_button == 1:
